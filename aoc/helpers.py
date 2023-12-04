@@ -84,11 +84,11 @@ async def _request_text(
     return response.text
 
 
-def _2_digit_year(year: int):
+def format_short_year(year: int):
     return year % 100
 
 
-def _4_digit_year(year: int):
+def format_long_year(year: int):
     if 70 <= year < 100:
         year += 1900
     if 0 <= year < 70:
@@ -102,11 +102,11 @@ class Day:
     day: int
 
     def __post_init__(self):
-        self.year = _4_digit_year(self.year)
+        self.year = format_long_year(self.year)
 
     @property
     def dir_path(self):
-        return BASE_DIR / f'year{_2_digit_year(self.year):0>2}' / f'day{self.day:0>2}'
+        return BASE_DIR / f'year{format_short_year(self.year):0>2}' / f'day{self.day:0>2}'
 
     @property
     def day_url(self):
@@ -192,7 +192,7 @@ async def _run_solution(sol: Solution):
         print('timeout before posting another answer')
     elif "That's not the right answer" in response:
         print('wrong answer')
-    elif False:
+    elif "That's the right answer" in response:
         print('sucessfuly posted answer')
     else:
         print('unknown response', response)
