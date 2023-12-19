@@ -1,5 +1,5 @@
 from aoc import helpers
-# from aoc.{year}.{day}.{part} import solution as p1  # pyright: ignore[reportUnusedImport]
+from aoc.year23.day19.part1 import solution as p1  # pyright: ignore[reportUnusedImport]
 
 
 def solution(lines: list[str]):
