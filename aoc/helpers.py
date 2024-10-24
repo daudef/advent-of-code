@@ -2,12 +2,12 @@ import asyncio
 import contextlib
 import dataclasses
 import functools
+import inspect
 import pathlib
-import typing
+import sqlite3
 import sys
 import tempfile
-import sqlite3
-import inspect
+import typing
 
 import httpx
 import rich.highlighter
@@ -163,8 +163,9 @@ class Problem:
 async def _run_solution(sol: Solution):
     problem = Problem.parse_from_dir_path(pathlib.Path(inspect.getfile(sol)).parent)
 
-    exemple_result = sol(problem.exemple_input_path.read_text(encoding='utf-8').splitlines())
-    print(f'exemple: {exemple_result}')
+    exemple_input = problem.exemple_input_path.read_text(encoding='utf-8').splitlines()
+    exemple_result = sol(exemple_input)
+    print(f'result on exemple: {exemple_result}', end='')
 
     try:
         expected_result = int(problem.exemple_result_path.read_text(encoding='utf-8'))
@@ -173,8 +174,10 @@ async def _run_solution(sol: Solution):
         exit()
 
     if exemple_result != expected_result:
-        print(f'error: expected {expected_result}')
+        print(f' (expected {expected_result})')
         exit()
+    else:
+        print(' (ok)')
 
     async with _get_http_client() as http_client:
         try:
@@ -183,19 +186,21 @@ async def _run_solution(sol: Solution):
             print('Cannot find input for the day')
             raise
         answer = sol(input.splitlines())
-    print(f'answer: {answer}')
+    print(f'result on real input: {answer}')
+
+    print('posting ... ', end='')
 
     response = await problem.post_answer(answer=answer)
     if 'Did you already complete it?' in response:
-        print('already posted answer')
+        print('already posted answer.')
     elif 'You gave an answer too recently' in response:
-        print('timeout before posting another answer')
+        print('timeout before posting another answer.')
     elif "That's not the right answer" in response:
-        print('wrong answer')
+        print('wrong answer.')
     elif "That's the right answer" in response:
-        print('sucessfuly posted answer')
+        print('sucessfuly posted answer.')
     else:
-        print('unknown response', response)
+        print('unknown response: ', response)
 
 
 def run_solution(sol: Solution):
