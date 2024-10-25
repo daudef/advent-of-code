@@ -1,6 +1,7 @@
 import dataclasses
 import functools
 import math
+
 from aoc import helpers
 from aoc.year23.day08.part1 import solution as sol1
 
@@ -98,7 +99,7 @@ def get_cycles(inst: sol1.Instructions, start: str, ends: set[str]):
     period = i - j
     for state, i in reached.items():
         if state.label in ends and i >= j:
-            yield Cycle(period, offset=i)
+            yield Cycle(period, offset=i % period)
 
 
 def solution(input: list[str]):
@@ -107,8 +108,10 @@ def solution(input: list[str]):
     inst = sol1.parse(input)
     starts = {k for k in inst.labels if k.endswith('A')}
     ends = {k for k in inst.labels if k.endswith('Z')}
+
+    for k in starts:
+        print(k, list(get_cycles(inst, k, ends=ends)))
     cycles = [c for k in starts for c in get_cycles(inst, k, ends=ends)]
-    print(cycles)
 
     cycle = functools.reduce(merge, cycles)
     print(cycle)
