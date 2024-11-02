@@ -11,6 +11,7 @@ python = "3.12"
 httpx = "^0.25.2"
 typer = "^0.9.0"
 rich = "^13.7.0"
+cyclopts = "^2.9.9"
 
 
 [build-system]

@@ -1,7 +1,8 @@
-import collections
 import dataclasses
 import enum
+import heapq
 import typing
+
 from aoc import helpers
 
 
@@ -11,41 +12,29 @@ class Direction(enum.Enum):
     UP = enum.auto()
     LEFT = enum.auto()
 
-    def __repr__(self) -> str:
-        return self.name
-
     def clockwise(self):
-        match self:
-            case Direction.DOWN:
-                return Direction.LEFT
-            case Direction.LEFT:
-                return Direction.UP
-            case Direction.UP:
-                return Direction.RIGHT
-            case Direction.RIGHT:
-                return Direction.DOWN
+        return CLOCKWISE_DIRECTION_MAP[self]
 
     def anti_clockwise(self):
-        match self:
-            case Direction.DOWN:
-                return Direction.RIGHT
-            case Direction.RIGHT:
-                return Direction.UP
-            case Direction.UP:
-                return Direction.LEFT
-            case Direction.LEFT:
-                return Direction.DOWN
+        return ANTI_CLOCKWISE_DIRECTION_MAP[self]
 
 
-@dataclasses.dataclass(frozen=True)
+CLOCKWISE_DIRECTION_MAP = {
+    Direction.UP: Direction.RIGHT,
+    Direction.RIGHT: Direction.DOWN,
+    Direction.DOWN: Direction.LEFT,
+    Direction.LEFT: Direction.UP,
+}
+
+ANTI_CLOCKWISE_DIRECTION_MAP = {d2: d1 for (d1, d2) in CLOCKWISE_DIRECTION_MAP.items()}
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
 class Position:
     row: int
     col: int
 
-    def __repr__(self) -> str:
-        return f'({self.row}, {self.col})'
-
-    def apply_direction(self, direction: Direction, row_count: int, col_count: int):
+    def apply_direction(self, direction: Direction, max_pos: 'Position'):
         row = self.row
         col = self.col
         match direction:
@@ -57,89 +46,103 @@ class Position:
                 row -= 1
             case Direction.LEFT:
                 col -= 1
-        if 0 <= row < row_count and 0 <= col < col_count:
-            yield Position(row, col)
+        if 0 <= row <= max_pos.row and 0 <= col <= max_pos.col:
+            return Position(row, col)
+        return None
 
 
-@dataclasses.dataclass(frozen=True)
-class Node:
-    position: Position
+@dataclasses.dataclass(frozen=True, slots=True)
+class Momentum:
     dir: Direction
-    move_left: int
-
-    neighbors: 'dict[Node, int]' = dataclasses.field(compare=False, repr=False)
+    len: int
 
 
-type NodeMap = dict[Position, dict[Direction, dict[int, Node]]]
+@dataclasses.dataclass(frozen=True, slots=True)
+class MomentumRange:
+    min_len: int
+    max_len: int
 
 
-def make_nodes(grid: list[list[int]]):
-    nodes = [
-        Node(position=Position(row, col), dir=dir, move_left=move_left, neighbors={})
-        for row, row_values in enumerate(grid)
-        for col, _ in enumerate(row_values)
-        for dir in Direction
-        for move_left in range(4)
-    ]
+@dataclasses.dataclass(frozen=True, slots=True)
+class Node:
+    pos: Position
+    mom: Momentum | None
 
-    node_map: NodeMap = collections.defaultdict(lambda: collections.defaultdict(dict))
 
-    for node in nodes:
-        node_map[node.position][node.dir][node.move_left] = node
+def gen_neighbors(node: Node, max_pos: Position, mom_range: MomentumRange):
+    turn_directions: typing.Iterable[Direction]
+    if node.mom is None:
+        turn_directions = Direction
+    else:
+        if node.mom.len >= mom_range.min_len:
+            turn_directions = (node.mom.dir.clockwise(), node.mom.dir.anti_clockwise())
+        else:
+            turn_directions = []
 
-    row_count = len(grid)
-    col_count = len(grid[0])
+        if node.mom.len < mom_range.max_len:
+            neighbor_pos = node.pos.apply_direction(node.mom.dir, max_pos)
+            if neighbor_pos is not None:
+                yield Node(neighbor_pos, Momentum(node.mom.dir, len=node.mom.len + 1))
 
-    for node in nodes:
-        for dir2 in (node.dir.clockwise(), node.dir.anti_clockwise()):
-            for pos2 in node.position.apply_direction(dir2, row_count, col_count):
-                cost = grid[pos2.row][pos2.col]
-                node2 = node_map[pos2][dir2][2]
-                node.neighbors[node2] = cost
-        if node.move_left > 0:
-            for pos2 in node.position.apply_direction(node.dir, row_count, col_count):
-                cost = grid[pos2.row][pos2.col]
-                node2 = node_map[pos2][node.dir][node.move_left - 1]
-                node.neighbors[node2] = cost
+    for dir in turn_directions:
+        neighbor_pos = node.pos.apply_direction(dir, max_pos)
+        if neighbor_pos is not None:
+            yield Node(neighbor_pos, Momentum(dir, len=1))
 
-    return node_map
+
+@dataclasses.dataclass(frozen=True, slots=True, order=True)
+class Path:
+    cost: int
+    nodes: typing.Sequence[Node] = dataclasses.field(compare=False)
+
+
+def gen_shortest_paths(grid: list[list[int]], max_pos: Position, mom_range: MomentumRange):
+    start_node = Node(Position(row=0, col=0), mom=None)
+    explored: set[Node] = set()
+    reachables = [Path(nodes=[start_node], cost=0)]
+    best_costs = {start_node: 0}
+
+    while len(reachables) > 0:
+        path = heapq.heappop(reachables)
+        node = path.nodes[-1]
+        if node in explored:
+            continue
+        yield path
+        explored.add(node)
+        for neighbor_node in gen_neighbors(node, max_pos, mom_range):
+            if neighbor_node in explored:
+                continue
+            new_neighbor_cost = path.cost + grid[neighbor_node.pos.row][neighbor_node.pos.col]
+            previous_best_neighbor_cost = best_costs.get(neighbor_node)
+            if previous_best_neighbor_cost is None or (
+                new_neighbor_cost < previous_best_neighbor_cost
+            ):
+                best_costs[neighbor_node] = new_neighbor_cost
+                heapq.heappush(
+                    reachables, Path(nodes=[*path.nodes, neighbor_node], cost=new_neighbor_cost)
+                )
 
 
 def parse_lines(lines: list[str]):
     return [[int(c) for c in line] for line in lines]
 
 
-@dataclasses.dataclass(frozen=True)
-class Path:
-    nodes: typing.Sequence[Node]
-    cost: int
-
-
-def shortest_paths(start: Node):
-    closest_nodes: dict[Node, Path] = {
-        node: Path(nodes=[start, node], cost=cost) for node, cost in start.neighbors.items()
-    }
-    explored = {start}
-
-    while len(closest_nodes) > 0:
-        node, path = min(closest_nodes.items(), key=lambda t: t[1].cost)
-        yield node, path
-        closest_nodes.pop(node)
-        explored.add(node)
-        for node2, cost in node.neighbors.items():
-            if node2 not in explored:
-                if (previous_path := closest_nodes.get(node2)) is None or (
-                    path.cost + cost < previous_path.cost
-                ):
-                    closest_nodes[node2] = Path(nodes=[*path.nodes, node2], cost=path.cost + cost)
+def solve(lines: list[str], mom_range: MomentumRange):
+    grid = parse_lines(lines)
+    max_pos = Position(row=len(grid) - 1, col=len(grid[0]) - 1)
+    for path in gen_shortest_paths(grid, max_pos, mom_range):
+        last_node = path.nodes[-1]
+        if (
+            last_node.pos == max_pos
+            and last_node.mom is not None
+            and last_node.mom.len >= mom_range.min_len
+        ):
+            return path.cost
+    raise RuntimeError('Last position not found')
 
 
 def solution(lines: list[str]):
-    node_map = make_nodes(parse_lines(lines))
-    for node, path in shortest_paths(node_map[Position(0, 0)][Direction.RIGHT][3]):
-        if node.position == Position(len(lines) - 1, len(lines[0]) - 1):
-            return path.cost
-    raise AssertionError
+    return solve(lines, mom_range=MomentumRange(1, 3))
 
 
 if __name__ == '__main__':

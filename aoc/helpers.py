@@ -9,6 +9,7 @@ import sys
 import tempfile
 import typing
 
+import cyclopts
 import httpx
 import rich.highlighter
 import typer
@@ -160,7 +161,7 @@ class Problem:
             )
 
 
-async def _run_solution(sol: Solution):
+async def _run_solution(sol: Solution, execute_real_input: bool):
     problem = Problem.parse_from_dir_path(pathlib.Path(inspect.getfile(sol)).parent)
 
     exemple_input = problem.exemple_input_path.read_text(encoding='utf-8').splitlines()
@@ -178,6 +179,10 @@ async def _run_solution(sol: Solution):
         exit()
     else:
         print(' (ok)')
+
+    if not execute_real_input:
+        print('skipping real input')
+        return
 
     async with _get_http_client() as http_client:
         try:
@@ -204,4 +209,10 @@ async def _run_solution(sol: Solution):
 
 
 def run_solution(sol: Solution):
-    asyncio.run(_run_solution(sol))
+    APP = cyclopts.App()
+
+    @APP.default
+    async def _(*, real_input: bool = True):
+        await _run_solution(sol, execute_real_input=real_input)
+
+    APP()
