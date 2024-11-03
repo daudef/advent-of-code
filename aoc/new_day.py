@@ -1,6 +1,7 @@
 import datetime
 import pathlib
 
+import cyclopts
 
 from aoc import _solution_template, helpers
 
@@ -24,6 +25,10 @@ def get_solution_content(problem: helpers.Problem):
         )
 
 
+APP = cyclopts.App()
+
+
+@APP.default
 async def main(day: int = datetime.datetime.now().day, year: int = datetime.datetime.now().year):
     day_ = helpers.Day(year=year, day=day)
 
@@ -45,4 +50,4 @@ async def main(day: int = datetime.datetime.now().day, year: int = datetime.date
 
 
 if __name__ == '__main__':
-    helpers.run_main(main)
+    APP()
