@@ -23,6 +23,22 @@ class Direction(enum.Enum):
             case Direction.RIGHT:
                 return Direction.LEFT
 
+    @staticmethod
+    def from_position_pair(pos1: 'Position', pos2: 'Position'):
+        row_diff = pos2.row - pos1.row
+        col_diff = pos2.col - pos1.col
+        if abs(row_diff) + abs(col_diff) != 1:
+            return None
+
+        if row_diff == 1:
+            return Direction.DOWN
+        if row_diff == -1:
+            return Direction.UP
+        if col_diff == 1:
+            return Direction.RIGHT
+        if col_diff == -1:
+            return Direction.LEFT
+
 
 @dataclasses.dataclass(frozen=True)
 class Position:
@@ -127,7 +143,7 @@ def get_path(input: Input):
     start_pos = input.start_pos()
     for dir in Direction:
         pos = start_pos.apply_dir(dir)
-        path = [dir]
+        path = [pos]
         while True:
             cell = input.cell_at(pos)
             if isinstance(cell, Start):
@@ -139,7 +155,7 @@ def get_path(input: Input):
                 break
             dir = other_dir
             pos = pos.apply_dir(dir)
-            path.append(dir)
+            path.append(pos)
 
 
 def solution(lines: list[str]):
