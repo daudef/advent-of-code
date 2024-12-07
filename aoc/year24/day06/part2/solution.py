@@ -46,7 +46,6 @@ def is_looping_with_obstacle_in_front(current: p1.State, input: p1.Input, tried:
 
 def gen_looping_obstacles(input: p1.Input):
     tried = set[p1.Position]()
-
     for state in p1.gen_states(input):
         new_obstacle = is_looping_with_obstacle_in_front(state, input, tried)
         if new_obstacle is not None:
