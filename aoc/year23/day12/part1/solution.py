@@ -36,7 +36,7 @@ def backtrack(index: int, group_index: int, row: Row, cache: BacktrackCache) -> 
         return result
 
     if group_index == len(row.group_sizes):
-        return 1
+        return 1 if all(c is not True for c in row.cells[index:]) else 0
 
     group_size = row.group_sizes[group_index]
 
