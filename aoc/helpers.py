@@ -7,6 +7,7 @@ import pathlib
 import sqlite3
 import sys
 import tempfile
+import time
 import typing
 
 import cyclopts
@@ -161,6 +162,25 @@ class Problem:
             )
 
 
+@dataclasses.dataclass
+class Result:
+    answer: int
+    duration_s: float
+
+    @property
+    def formated_duration(self):
+        if self.duration_s < 1:
+            return f'{self.duration_s * 1000:0.0f}ms'
+        return f'{self.duration_s:1.1f}s'
+
+
+def time_and_run_solution(sol: Solution, input: list[str]):
+    t0 = time.perf_counter()
+    answer = sol(input)
+    duration_s = time.perf_counter() - t0
+    return Result(answer=answer, duration_s=duration_s)
+
+
 async def _run_solution(sol: Solution, execute_real_input: bool):
     problem = Problem.parse_from_dir_path(pathlib.Path(inspect.getfile(sol)).parent)
 
@@ -171,7 +191,7 @@ async def _run_solution(sol: Solution, execute_real_input: bool):
     try:
         expected_result = int(problem.exemple_result_path.read_text(encoding='utf-8'))
     except Exception:
-        print('error: missing or invalid expected result')
+        print('\nerror: cannot find expected result')
         exit()
 
     if exemple_result != expected_result:
@@ -186,24 +206,28 @@ async def _run_solution(sol: Solution, execute_real_input: bool):
 
     async with _get_http_client() as http_client:
         try:
-            input = await problem.day.get_input(http_client)
+            input = (await problem.day.get_input(http_client)).splitlines()
         except Exception:
             print('Cannot find input for the day')
             raise
-        answer = sol(input.splitlines())
-    print(f'result on real input: {answer}')
+
+    print('result on real input: ', end='')
+
+    result = time_and_run_solution(sol, input)
+
+    print(f'{result.answer} ({result.formated_duration})')
 
     print('posting ... ', end='')
 
-    response = await problem.post_answer(answer=answer)
+    response = await problem.post_answer(answer=result.answer)
     if 'Did you already complete it?' in response:
-        print('already posted answer.')
+        print('did you already complete it?')
     elif 'You gave an answer too recently' in response:
-        print('timeout before posting another answer.')
+        print('please wait a bit.')
     elif "That's not the right answer" in response:
-        print('wrong answer.')
+        print('wrong answer ...')
     elif "That's the right answer" in response:
-        print('sucessfuly posted answer.')
+        print('right answer :)')
     else:
         print('unknown response: ', response)
 
