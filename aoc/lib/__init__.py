@@ -1,3 +1,3 @@
-from .grid import Delta, Pos
+from .grid import Delta, Grid, Pos
 
-__all__ = ['Delta', 'Pos']
+__all__ = ['Delta', 'Pos', 'Grid']

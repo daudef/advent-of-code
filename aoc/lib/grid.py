@@ -25,6 +25,12 @@ class Delta:
     def is_zero(self):
         return self.drow == 0 and self.dcol == 0
 
+    @staticmethod
+    def of_norm(n: int):
+        for drow in range(-n, n + 1):
+            for dcol in (n - abs(drow), abs(drow) - n) if (abs(drow) != n) else (0,):
+                yield Delta(drow, dcol)
+
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class Pos:
@@ -61,3 +67,28 @@ class Pos:
         col = len(lines[0])
         assert all(col == len(line) for line in lines)
         return Pos(row=row, col=col)
+
+
+@dataclasses.dataclass
+class Grid[T]:
+    values: list[list[T]]
+    len: Pos
+
+    def items(self):
+        for row, line in enumerate(self.values):
+            for col, value in enumerate(line):
+                yield Pos(row, col), value
+
+    @staticmethod
+    def parse(lines: list[str], converter: typing.Callable[[str], T]):
+        return Grid(
+            values=[[converter(c) for c in line] for line in lines], len=Pos.parse_stop(lines)
+        )
+
+    def __getitem__(self, pos: Pos):
+        return self.values[pos.row][pos.col]
+
+    def get(self, pos: Pos):
+        if pos.in_range(self.len):
+            return self[pos]
+        return None
