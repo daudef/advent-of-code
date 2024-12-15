@@ -60,6 +60,9 @@ class Pos:
             return self.row >= start.row and self.col >= start.col
         return self.row >= 0 and self.col >= 0
 
+    def wrap(self, stop: 'Pos'):
+        return Pos(row=self.row % stop.row, col=self.col % stop.col)
+
     @staticmethod
     def parse_stop(lines: list[str]):
         row = len(lines)
