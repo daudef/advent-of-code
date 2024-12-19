@@ -105,3 +105,11 @@ class Grid[T]:
         if pos.in_range(self.len):
             return self[pos]
         return None
+
+    def find(self, cell: T):
+        return next((pos for pos, c in self.items() if c == cell), None)
+
+    def map[S](self, converter: typing.Callable[[T], typing.Iterable[S]]):
+        return Grid(
+            [[cell for old_cell in line for cell in converter(old_cell)] for line in self.values]
+        )
