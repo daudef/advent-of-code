@@ -1,4 +1,5 @@
 import dataclasses
+import functools
 import typing
 
 
@@ -75,7 +76,15 @@ class Pos:
 @dataclasses.dataclass
 class Grid[T]:
     values: list[list[T]]
-    len: Pos
+    # len: Pos
+
+    @functools.cached_property
+    def len(self):
+        row = len(self.values)
+        assert row > 0
+        col = len(self.values[0])
+        assert all(col == len(line) for line in self.values)
+        return Pos(row=row, col=col)
 
     def items(self):
         for row, line in enumerate(self.values):
@@ -84,12 +93,13 @@ class Grid[T]:
 
     @staticmethod
     def parse(lines: list[str], converter: typing.Callable[[str], T]):
-        return Grid(
-            values=[[converter(c) for c in line] for line in lines], len=Pos.parse_stop(lines)
-        )
+        return Grid(values=[[converter(c) for c in line] for line in lines])
 
     def __getitem__(self, pos: Pos):
         return self.values[pos.row][pos.col]
+
+    def __setitem__(self, pos: Pos, value: T):
+        self.values[pos.row][pos.col] = value
 
     def get(self, pos: Pos):
         if pos.in_range(self.len):
