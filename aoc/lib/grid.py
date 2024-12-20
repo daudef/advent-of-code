@@ -32,6 +32,11 @@ class Delta:
             for dcol in (n - abs(drow), abs(drow) - n) if (abs(drow) != n) else (0,):
                 yield Delta(drow, dcol)
 
+    @staticmethod
+    def of_norm_in_range(stop: int, *, start: int = 0) -> typing.Iterator['Delta']:
+        for n in range(start, stop):
+            yield from Delta.of_norm(n)
+
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class Pos:

@@ -11,7 +11,7 @@ class Path[T]:
     cost: int
 
 
-def djikstra_gen[T](starts: typing.Iterable[T], graph: Graph[T], all_paths: bool):
+def djikstra_gen[T](starts: typing.Iterable[T], graph: Graph[T], all_paths: bool = False):
     explored: set[T] = set()
     reachables: list[Path[T]] = []
     best_costs: dict[T, int] = {}
