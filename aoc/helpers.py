@@ -15,7 +15,7 @@ import httpx
 import rich.highlighter
 import typer
 
-type Solution = typing.Callable[[list[str]], int]
+type Solution = typing.Callable[[list[str]], str | int]
 
 AOC_BASE_URL = 'https://adventofcode.com'
 BASE_DIR = pathlib.Path(__file__).parent
@@ -152,7 +152,7 @@ class Problem:
         assert part in {1, 2}
         return Problem(Day.parse_from_dir_path(path.parent), part=part)
 
-    async def post_answer(self, answer: int):
+    async def post_answer(self, answer: str):
         async with _get_http_client() as http_client:
             return await _request_text(
                 f'{self.day.day_url}/answer',
@@ -164,7 +164,7 @@ class Problem:
 
 @dataclasses.dataclass
 class Result:
-    answer: int
+    answer: str
     duration_s: float
 
     @property
@@ -176,7 +176,7 @@ class Result:
 
 def time_and_run_solution(sol: Solution, input: list[str]):
     t0 = time.perf_counter()
-    answer = sol(input)
+    answer = str(sol(input))
     duration_s = time.perf_counter() - t0
     return Result(answer=answer, duration_s=duration_s)
 
@@ -185,11 +185,11 @@ async def _run_solution(sol: Solution, execute_real_input: bool):
     problem = Problem.parse_from_dir_path(pathlib.Path(inspect.getfile(sol)).parent)
 
     exemple_input = problem.exemple_input_path.read_text(encoding='utf-8').splitlines()
-    exemple_result = sol(exemple_input)
+    exemple_result = str(sol(exemple_input))
     print(f'result on exemple: {exemple_result}', end='')
 
     try:
-        expected_result = int(problem.exemple_result_path.read_text(encoding='utf-8'))
+        expected_result = problem.exemple_result_path.read_text(encoding='utf-8')
     except Exception:
         print('\nerror: cannot find expected result')
         exit()
