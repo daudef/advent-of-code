@@ -27,6 +27,15 @@ class Delta:
         return self.drow == 0 and self.dcol == 0
 
     @staticmethod
+    def ring(n: int):
+        for drow in [-n, n]:
+            for dcol in range(-n, n + 1):
+                yield Delta(drow, dcol)
+        for dcol in [-n, n]:
+            for drow in range(-n + 1, n):
+                yield Delta(drow, dcol)
+
+    @staticmethod
     def of_norm(n: int):
         for drow in range(-n, n + 1):
             for dcol in (n - abs(drow), abs(drow) - n) if (abs(drow) != n) else (0,):
